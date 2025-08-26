@@ -1,9 +1,9 @@
 blueprint:
-  name: Aqara H2 EU WS-K07D – minimal (single up/down, double down, hold down)
+  name: Aqara H2 EU WS-K07D – minimal (single_up, single_down, double_down, hold_down)
   description: >
-    Mapuje wybrane akcje z Aqara H2 EU WS-K07D w Zigbee2MQTT.
-    Obsługa: single_up, single_down, double_down, hold_down.
-    Działa z topic'iem /action (czysty string) lub z JSON posiadającym pole "action".
+    Minimalne mapowanie akcji z Aqara H2 EU WS-K07D (Zigbee2MQTT).
+    Obsługa: single_up (góra), single_down / double_down / hold_down (dół).
+    Działa zarówno z osobnym topic'iem /action (czysty string), jak i z JSON zawierającym pole "action".
 
   domain: automation
 
