@@ -1,0 +1,196 @@
+blueprint:
+  name: Aqara H2 EU (WS-K07D/WS-K07E) – Zigbee2MQTT (decoupled + multi-click)
+  description: >
+    Mapuje zdarzenia 'action' z Aqara H2 EU (WS-K07D/WS-K07E) w Zigbee2MQTT.
+    Obsługa: single_up/down, double_up/down, hold_up/down, release_up/down (+ opcjonalnie triple_*).
+    Może automatycznie ustawić tryb 'decoupled', włączyć 'multi_click_*' i (opcjonalnie) zablokować przekaźnik.
+    Uwaga: utrzymywanie stałego zasilania lampy zrób przez podanie encji przekaźnika (light/switch) w polu
+    'Entity przekaźnika – utrzymuj ON' — blueprint będzie ją włączał przy starcie HA i przy każdym kliknięciu.
+
+  domain: automation
+  source_url: https://github.com/NatanE6/Bluprints/Aqara_H2_EU_WS-K07D.yaml
+
+  input:
+    mqtt_action_topic:
+      name: Topic MQTT – action
+      description: Topic z akcjami z Z2M, np. zigbee2mqtt/H2_Salon/action
+      default: zigbee2mqtt/YOUR_DEVICE/action
+      selector: { text: {} }
+
+    mqtt_set_topic:
+      name: Topic MQTT – set (konfiguracja)
+      description: Topic do ustawień Z2M, np. zigbee2mqtt/H2_Salon/set
+      default: zigbee2mqtt/YOUR_DEVICE/set
+      selector: { text: {} }
+
+    configure_on_start:
+      name: Skonfiguruj urządzenie przy starcie (decoupled + multi_click)
+      default: true
+      selector: { boolean: {} }
+
+    lock_relay_up:
+      name: Zablokuj przekaźnik UP (lock_relay_up)
+      default: false
+      selector: { boolean: {} }
+
+    lock_relay_down:
+      name: Zablokuj przekaźnik DOWN (lock_relay_down)
+      default: false
+      selector: { boolean: {} }
+
+    keep_relay_on_entity:
+      name: Entity przekaźnika – utrzymuj ON (opcjonalne)
+      description: Encja light.* lub switch.* zasilająca lampę – będzie automatycznie włączana.
+      default: ""
+      selector:
+        entity:
+          multiple: false
+          filter:
+            domain:
+              - light
+              - switch
+
+    # Akcje GÓRA
+    on_top_single:
+      name: GÓRA – single
+      default: []
+      selector: { action: {} }
+
+    on_top_double:
+      name: GÓRA – double
+      default: []
+      selector: { action: {} }
+
+    on_top_triple:
+      name: GÓRA – triple (jeśli urządzenie raportuje)
+      default: []
+      selector: { action: {} }
+
+    on_top_hold:
+      name: GÓRA – hold (przytrzymanie)
+      default: []
+      selector: { action: {} }
+
+    on_top_release:
+      name: GÓRA – release (po hold)
+      default: []
+      selector: { action: {} }
+
+    # Akcje DÓŁ
+    on_bottom_single:
+      name: DÓŁ – single
+      default: []
+      selector: { action: {} }
+
+    on_bottom_double:
+      name: DÓŁ – double
+      default: []
+      selector: { action: {} }
+
+    on_bottom_triple:
+      name: DÓŁ – triple (jeśli urządzenie raportuje)
+      default: []
+      selector: { action: {} }
+
+    on_bottom_hold:
+      name: DÓŁ – hold (przytrzymanie)
+      default: []
+      selector: { action: {} }
+
+    on_bottom_release:
+      name: DÓŁ – release (po hold)
+      default: []
+      selector: { action: {} }
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - id: mqtt
+    platform: mqtt
+    topic: !input mqtt_action_topic
+
+  - id: config
+    platform: homeassistant
+    event: start
+
+variables:
+  action: >-
+    {% if trigger is defined and trigger.payload is defined %}
+      {{ trigger.payload | lower }}
+    {% else %}{{ '' }}{% endif %}
+  keep_entity: !input keep_relay_on_entity
+  cfg_on_start: !input configure_on_start
+  lock_up: !input lock_relay_up
+  lock_down: !input lock_relay_down
+  topic_set: !input mqtt_set_topic
+
+condition: []
+
+action:
+  - choose:
+      # ── GAŁĄŹ KONFIGURACJI PRZY STARcie HA ───────────────────────────────────
+      - conditions: "{{ trigger.id == 'config' and cfg_on_start }}"
+        sequence:
+          - service: mqtt.publish
+            data:
+              topic: "{{ topic_set }}"
+              payload: >-
+                {% set p = {
+                  "operation_mode_up": "decoupled",
+                  "operation_mode_down": "decoupled",
+                  "multi_click_up": true,
+                  "multi_click_down": true
+                } %}
+                {% if lock_up %}{% set _ = p.update({"lock_relay_up": true}) %}{% endif %}
+                {% if lock_down %}{% set _ = p.update({"lock_relay_down": true}) %}{% endif %}
+                {{ p | tojson }}
+
+          # Opcjonalnie – utrzymaj przekaźnik ON przy starcie HA
+          - if:
+              - condition: template
+                value_template: "{{ keep_entity is string and keep_entity|length > 0 }}"
+            then:
+              - service: homeassistant.turn_on
+                target:
+                  entity_id: "{{ keep_entity }}"
+
+      # ── GAŁĄŹ AKCJI Z KLIKÓW ─────────────────────────────────────────────────
+      - conditions: "{{ trigger.id == 'mqtt' }}"
+        sequence:
+          # Utrzymuj przekaźnik ON przy każdym kliknięciu (jeśli podano encję)
+          - if:
+              - condition: template
+                value_template: "{{ keep_entity is string and keep_entity|length > 0 }}"
+            then:
+              - service: homeassistant.turn_on
+                target:
+                  entity_id: "{{ keep_entity }}"
+
+          # Mapowanie akcji
+          - choose:
+              # GÓRA
+              - conditions: "{{ action == 'single_up' }}"
+                sequence: !input on_top_single
+              - conditions: "{{ action == 'double_up' }}"
+                sequence: !input on_top_double
+              - conditions: "{{ action == 'triple_up' }}"
+                sequence: !input on_top_triple
+              - conditions: "{{ action == 'hold_up' }}"
+                sequence: !input on_top_hold
+              - conditions: "{{ action == 'release_up' }}"
+                sequence: !input on_top_release
+
+              # DÓŁ
+              - conditions: "{{ action == 'single_down' }}"
+                sequence: !input on_bottom_single
+              - conditions: "{{ action == 'double_down' }}"
+                sequence: !input on_bottom_double
+              - conditions: "{{ action == 'triple_down' }}"
+                sequence: !input on_bottom_triple
+              - conditions: "{{ action == 'hold_down' }}"
+                sequence: !input on_bottom_hold
+              - conditions: "{{ action == 'release_down' }}"
+                sequence: !input on_bottom_release
+            default: []
+    default: []
