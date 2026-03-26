@@ -59,4 +59,6 @@ https://raw.githubusercontent.com/NatanE6/Bluprints/main/Aqara_H2_EU_WS-K07D.yam
 
 ## License
 
-Do whatever you want with it.
+Released under **The Unlicense** — do whatever you want with it.
+
+For the full text, see [LICENSE](./LICENSE).
