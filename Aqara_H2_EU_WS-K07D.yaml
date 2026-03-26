@@ -16,7 +16,6 @@ blueprint:
       selector:
         text: {}
 
-    # ── GÓRA – single ──────────────────────────────────────────
     section_top_single:
       name: "GÓRA – single (single_up)"
       icon: mdi:arrow-up-bold
@@ -42,22 +41,14 @@ blueprint:
                 - label: "Custom action (dowolna akcja)"
                   value: custom
         top_single_lights:
-          name: Światła
-          description: "Tryby: Toggle / CCT / RGB / Brightness Cycle"
+          name: "Światła  [Toggle / CCT / RGB / Brightness]"
           default: []
           selector:
             entity:
               domain: light
               multiple: true
-
-    section_top_single_cct:
-      name: "GÓRA single – ustawienia CCT"
-      icon: mdi:thermometer
-      description: "Otwórz gdy tryb = CCT Color"
-      collapsed: true
-      input:
         top_single_cct_preset:
-          name: Preset barwy
+          name: "CCT – preset barwy  [tylko tryb CCT]"
           default: warm
           selector:
             select:
@@ -72,7 +63,7 @@ blueprint:
                 - label: "Własny (wpisz Kelwiny poniżej)"
                   value: custom
         top_single_cct_kelvin:
-          name: "Kelwiny (tylko przy preście: Własny)"
+          name: "CCT – Kelwiny  [tylko preset: Własny]"
           default: 2700
           selector:
             number:
@@ -81,32 +72,17 @@ blueprint:
               step: 100
               unit_of_measurement: K
               mode: slider
-
-    section_top_single_rgb:
-      name: "GÓRA single – ustawienia RGB"
-      icon: mdi:palette
-      description: "Otwórz gdy tryb = RGB Color"
-      collapsed: true
-      input:
         top_single_rgb:
-          name: Kolor RGB
+          name: "RGB – kolor  [tylko tryb RGB]"
           default: [255, 255, 255]
           selector:
             color_rgb: {}
-
-    section_top_single_custom:
-      name: "GÓRA single – akcja Custom"
-      icon: mdi:lightning-bolt
-      description: "Otwórz gdy tryb = Custom action"
-      collapsed: true
-      input:
         top_single_custom:
-          name: Akcja
+          name: "Custom – akcja  [tylko tryb Custom]"
           default: []
           selector:
             action: {}
 
-    # ── DÓŁ – single ──────────────────────────────────────────
     section_bottom_single:
       name: "DÓŁ – single (single_down)"
       icon: mdi:arrow-down-bold
@@ -132,22 +108,14 @@ blueprint:
                 - label: "Custom action (dowolna akcja)"
                   value: custom
         bottom_single_lights:
-          name: Światła
-          description: "Tryby: Toggle / CCT / RGB / Brightness Cycle"
+          name: "Światła  [Toggle / CCT / RGB / Brightness]"
           default: []
           selector:
             entity:
               domain: light
               multiple: true
-
-    section_bottom_single_cct:
-      name: "DÓŁ single – ustawienia CCT"
-      icon: mdi:thermometer
-      description: "Otwórz gdy tryb = CCT Color"
-      collapsed: true
-      input:
         bottom_single_cct_preset:
-          name: Preset barwy
+          name: "CCT – preset barwy  [tylko tryb CCT]"
           default: warm
           selector:
             select:
@@ -162,7 +130,7 @@ blueprint:
                 - label: "Własny (wpisz Kelwiny poniżej)"
                   value: custom
         bottom_single_cct_kelvin:
-          name: "Kelwiny (tylko przy preście: Własny)"
+          name: "CCT – Kelwiny  [tylko preset: Własny]"
           default: 2700
           selector:
             number:
@@ -171,32 +139,17 @@ blueprint:
               step: 100
               unit_of_measurement: K
               mode: slider
-
-    section_bottom_single_rgb:
-      name: "DÓŁ single – ustawienia RGB"
-      icon: mdi:palette
-      description: "Otwórz gdy tryb = RGB Color"
-      collapsed: true
-      input:
         bottom_single_rgb:
-          name: Kolor RGB
+          name: "RGB – kolor  [tylko tryb RGB]"
           default: [255, 255, 255]
           selector:
             color_rgb: {}
-
-    section_bottom_single_custom:
-      name: "DÓŁ single – akcja Custom"
-      icon: mdi:lightning-bolt
-      description: "Otwórz gdy tryb = Custom action"
-      collapsed: true
-      input:
         bottom_single_custom:
-          name: Akcja
+          name: "Custom – akcja  [tylko tryb Custom]"
           default: []
           selector:
             action: {}
 
-    # ── DÓŁ – double ──────────────────────────────────────────
     section_bottom_double:
       name: "DÓŁ – double (double_down)"
       icon: mdi:gesture-double-tap
@@ -222,22 +175,14 @@ blueprint:
                 - label: "Custom action (dowolna akcja)"
                   value: custom
         bottom_double_lights:
-          name: Światła
-          description: "Tryby: Toggle / CCT / RGB / Brightness Cycle"
+          name: "Światła  [Toggle / CCT / RGB / Brightness]"
           default: []
           selector:
             entity:
               domain: light
               multiple: true
-
-    section_bottom_double_cct:
-      name: "DÓŁ double – ustawienia CCT"
-      icon: mdi:thermometer
-      description: "Otwórz gdy tryb = CCT Color"
-      collapsed: true
-      input:
         bottom_double_cct_preset:
-          name: Preset barwy
+          name: "CCT – preset barwy  [tylko tryb CCT]"
           default: warm
           selector:
             select:
@@ -252,7 +197,7 @@ blueprint:
                 - label: "Własny (wpisz Kelwiny poniżej)"
                   value: custom
         bottom_double_cct_kelvin:
-          name: "Kelwiny (tylko przy preście: Własny)"
+          name: "CCT – Kelwiny  [tylko preset: Własny]"
           default: 2700
           selector:
             number:
@@ -261,32 +206,17 @@ blueprint:
               step: 100
               unit_of_measurement: K
               mode: slider
-
-    section_bottom_double_rgb:
-      name: "DÓŁ double – ustawienia RGB"
-      icon: mdi:palette
-      description: "Otwórz gdy tryb = RGB Color"
-      collapsed: true
-      input:
         bottom_double_rgb:
-          name: Kolor RGB
+          name: "RGB – kolor  [tylko tryb RGB]"
           default: [255, 255, 255]
           selector:
             color_rgb: {}
-
-    section_bottom_double_custom:
-      name: "DÓŁ double – akcja Custom"
-      icon: mdi:lightning-bolt
-      description: "Otwórz gdy tryb = Custom action"
-      collapsed: true
-      input:
         bottom_double_custom:
-          name: Akcja
+          name: "Custom – akcja  [tylko tryb Custom]"
           default: []
           selector:
             action: {}
 
-    # ── DÓŁ – hold ────────────────────────────────────────────
     section_bottom_hold:
       name: "DÓŁ – hold (hold_down)"
       icon: mdi:gesture-tap-hold
@@ -312,22 +242,14 @@ blueprint:
                 - label: "Custom action (dowolna akcja)"
                   value: custom
         bottom_hold_lights:
-          name: Światła
-          description: "Tryby: Toggle / CCT / RGB / Brightness Cycle"
+          name: "Światła  [Toggle / CCT / RGB / Brightness]"
           default: []
           selector:
             entity:
               domain: light
               multiple: true
-
-    section_bottom_hold_cct:
-      name: "DÓŁ hold – ustawienia CCT"
-      icon: mdi:thermometer
-      description: "Otwórz gdy tryb = CCT Color"
-      collapsed: true
-      input:
         bottom_hold_cct_preset:
-          name: Preset barwy
+          name: "CCT – preset barwy  [tylko tryb CCT]"
           default: warm
           selector:
             select:
@@ -342,7 +264,7 @@ blueprint:
                 - label: "Własny (wpisz Kelwiny poniżej)"
                   value: custom
         bottom_hold_cct_kelvin:
-          name: "Kelwiny (tylko przy preście: Własny)"
+          name: "CCT – Kelwiny  [tylko preset: Własny]"
           default: 2700
           selector:
             number:
@@ -351,27 +273,13 @@ blueprint:
               step: 100
               unit_of_measurement: K
               mode: slider
-
-    section_bottom_hold_rgb:
-      name: "DÓŁ hold – ustawienia RGB"
-      icon: mdi:palette
-      description: "Otwórz gdy tryb = RGB Color"
-      collapsed: true
-      input:
         bottom_hold_rgb:
-          name: Kolor RGB
+          name: "RGB – kolor  [tylko tryb RGB]"
           default: [255, 255, 255]
           selector:
             color_rgb: {}
-
-    section_bottom_hold_custom:
-      name: "DÓŁ hold – akcja Custom"
-      icon: mdi:lightning-bolt
-      description: "Otwórz gdy tryb = Custom action"
-      collapsed: true
-      input:
         bottom_hold_custom:
-          name: Akcja
+          name: "Custom – akcja  [tylko tryb Custom]"
           default: []
           selector:
             action: {}
