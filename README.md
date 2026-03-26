@@ -2,7 +2,7 @@
 
 Personal collection of Home Assistant automation blueprints. Built for my own setup, but feel free to use them if they fit yours.
 
-> **Note:** UI labels and field descriptions inside the blueprints are written in Polish. This README and the blueprint identifiers are in English.
+> **Note:** UI labels and field descriptions inside the blueprints are written in Polish. This README and the blueprint identifiers are in English. If you'd like them in your own language, feel free to fork the repo and translate.
 
 ---
 
