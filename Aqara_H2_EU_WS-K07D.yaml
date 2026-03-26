@@ -1,38 +1,296 @@
 blueprint:
-  name: Aqara H2 EU WS-K07D – minimal (single_up, single_down, double_down, hold_down)
-  description: >
-    Minimalne mapowanie akcji z Aqara H2 EU WS-K07D (Zigbee2MQTT).
-    Obsługa: single_up (góra), single_down / double_down / hold_down (dół).
-    Działa zarówno z osobnym topic'iem /action (czysty string), jak i z JSON zawierającym pole "action".
-
+  name: Aqara H2 EU WS-K07D
+  description: >-
+    Aqara H2 EU WS-K07D (Zigbee2MQTT). Per każdy przycisk wybierasz tryb:
+    Toggle / CCT Color / RGB Color / Brightness Cycle / Custom / Wyłączony.
+    Tryby CCT, RGB i Brightness automatycznie obsługują wzorzec "was-on restore":
+    jeśli światło było wyłączone, zostaje włączone na 1 s (żeby ustawić kolor/jasność),
+    a następnie wraca do stanu wyłączonego.
   domain: automation
-
+  source_url: https://github.com/NatanE6/Bluprints/blob/main/Aqara_H2_EU_WS-K07D.yaml
   input:
     mqtt_action_topic:
       name: Topic MQTT – action
-      description: Np. zigbee2mqtt/TWOJE_URZADZENIE/action (lub topic bazowy, jeśli akcje lecą w JSON).
+      description: "Np. zigbee2mqtt/TWOJE_URZADZENIE/action"
       default: zigbee2mqtt/YOUR_DEVICE/action
-      selector: { text: {} }
+      selector:
+        text: {}
 
-    on_top_single:
-      name: GÓRA – single (single_up)
-      default: []
-      selector: { action: {} }
+    section_top_single:
+      name: "↑ GÓRA – single (single_up)"
+      icon: mdi:arrow-up-bold
+      collapsed: true
+      input:
+        top_single_mode:
+          name: Tryb
+          default: disabled
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Wyłączony (nic)"
+                  value: disabled
+                - label: "Toggle (włącz / wyłącz)"
+                  value: toggle
+                - label: "CCT Color (temperatura barwowa)"
+                  value: cct
+                - label: "RGB Color (kolor)"
+                  value: rgb
+                - label: "Brightness Cycle (cykl jasności)"
+                  value: brightness_cycle
+                - label: "Custom action (dowolna akcja)"
+                  value: custom
+        top_single_lights:
+          name: Światła
+          description: "Używane w trybach: Toggle / CCT / RGB / Brightness Cycle"
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+        top_single_cct_preset:
+          name: "CCT – preset barwy"
+          description: "Tylko tryb CCT Color"
+          default: warm
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Ciepły (najcieplejszy dostępny przez żarówkę)"
+                  value: warm
+                - label: "Dzienny (4000 K)"
+                  value: neutral
+                - label: "Zimny (5800 K)"
+                  value: cool
+                - label: "Własny (wpisz Kelwiny poniżej)"
+                  value: custom
+        top_single_cct_kelvin:
+          name: "CCT – Kelwiny (aktywne tylko przy preście: Własny)"
+          default: 2700
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              step: 100
+              unit_of_measurement: K
+              mode: slider
+        top_single_rgb:
+          name: "RGB – kolor (tylko tryb RGB Color)"
+          default: [255, 255, 255]
+          selector:
+            color_rgb: {}
+        top_single_custom:
+          name: "Custom – akcja (tylko tryb Custom)"
+          default: []
+          selector:
+            action: {}
 
-    on_bottom_single:
-      name: DÓŁ – single (single_down)
-      default: []
-      selector: { action: {} }
+    section_bottom_single:
+      name: "↓ DÓŁ – single (single_down)"
+      icon: mdi:arrow-down-bold
+      collapsed: true
+      input:
+        bottom_single_mode:
+          name: Tryb
+          default: disabled
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Wyłączony (nic)"
+                  value: disabled
+                - label: "Toggle (włącz / wyłącz)"
+                  value: toggle
+                - label: "CCT Color (temperatura barwowa)"
+                  value: cct
+                - label: "RGB Color (kolor)"
+                  value: rgb
+                - label: "Brightness Cycle (cykl jasności)"
+                  value: brightness_cycle
+                - label: "Custom action (dowolna akcja)"
+                  value: custom
+        bottom_single_lights:
+          name: Światła
+          description: "Używane w trybach: Toggle / CCT / RGB / Brightness Cycle"
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+        bottom_single_cct_preset:
+          name: "CCT – preset barwy"
+          description: "Tylko tryb CCT Color"
+          default: warm
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Ciepły (najcieplejszy dostępny przez żarówkę)"
+                  value: warm
+                - label: "Dzienny (4000 K)"
+                  value: neutral
+                - label: "Zimny (5800 K)"
+                  value: cool
+                - label: "Własny (wpisz Kelwiny poniżej)"
+                  value: custom
+        bottom_single_cct_kelvin:
+          name: "CCT – Kelwiny (aktywne tylko przy preście: Własny)"
+          default: 2700
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              step: 100
+              unit_of_measurement: K
+              mode: slider
+        bottom_single_rgb:
+          name: "RGB – kolor (tylko tryb RGB Color)"
+          default: [255, 255, 255]
+          selector:
+            color_rgb: {}
+        bottom_single_custom:
+          name: "Custom – akcja (tylko tryb Custom)"
+          default: []
+          selector:
+            action: {}
 
-    on_bottom_double:
-      name: DÓŁ – double (double_down)
-      default: []
-      selector: { action: {} }
+    section_bottom_double:
+      name: "↓↓ DÓŁ – double (double_down)"
+      icon: mdi:gesture-double-tap
+      collapsed: true
+      input:
+        bottom_double_mode:
+          name: Tryb
+          default: disabled
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Wyłączony (nic)"
+                  value: disabled
+                - label: "Toggle (włącz / wyłącz)"
+                  value: toggle
+                - label: "CCT Color (temperatura barwowa)"
+                  value: cct
+                - label: "RGB Color (kolor)"
+                  value: rgb
+                - label: "Brightness Cycle (cykl jasności)"
+                  value: brightness_cycle
+                - label: "Custom action (dowolna akcja)"
+                  value: custom
+        bottom_double_lights:
+          name: Światła
+          description: "Używane w trybach: Toggle / CCT / RGB / Brightness Cycle"
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+        bottom_double_cct_preset:
+          name: "CCT – preset barwy"
+          description: "Tylko tryb CCT Color"
+          default: warm
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Ciepły (najcieplejszy dostępny przez żarówkę)"
+                  value: warm
+                - label: "Dzienny (4000 K)"
+                  value: neutral
+                - label: "Zimny (5800 K)"
+                  value: cool
+                - label: "Własny (wpisz Kelwiny poniżej)"
+                  value: custom
+        bottom_double_cct_kelvin:
+          name: "CCT – Kelwiny (aktywne tylko przy preście: Własny)"
+          default: 2700
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              step: 100
+              unit_of_measurement: K
+              mode: slider
+        bottom_double_rgb:
+          name: "RGB – kolor (tylko tryb RGB Color)"
+          default: [255, 255, 255]
+          selector:
+            color_rgb: {}
+        bottom_double_custom:
+          name: "Custom – akcja (tylko tryb Custom)"
+          default: []
+          selector:
+            action: {}
 
-    on_bottom_hold:
-      name: DÓŁ – hold (hold_down)
-      default: []
-      selector: { action: {} }
+    section_bottom_hold:
+      name: "↓⏸ DÓŁ – hold (hold_down)"
+      icon: mdi:gesture-tap-hold
+      collapsed: true
+      input:
+        bottom_hold_mode:
+          name: Tryb
+          default: disabled
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Wyłączony (nic)"
+                  value: disabled
+                - label: "Toggle (włącz / wyłącz)"
+                  value: toggle
+                - label: "CCT Color (temperatura barwowa)"
+                  value: cct
+                - label: "RGB Color (kolor)"
+                  value: rgb
+                - label: "Brightness Cycle (cykl jasności)"
+                  value: brightness_cycle
+                - label: "Custom action (dowolna akcja)"
+                  value: custom
+        bottom_hold_lights:
+          name: Światła
+          description: "Używane w trybach: Toggle / CCT / RGB / Brightness Cycle"
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+        bottom_hold_cct_preset:
+          name: "CCT – preset barwy"
+          description: "Tylko tryb CCT Color"
+          default: warm
+          selector:
+            select:
+              mode: list
+              options:
+                - label: "Ciepły (najcieplejszy dostępny przez żarówkę)"
+                  value: warm
+                - label: "Dzienny (4000 K)"
+                  value: neutral
+                - label: "Zimny (5800 K)"
+                  value: cool
+                - label: "Własny (wpisz Kelwiny poniżej)"
+                  value: custom
+        bottom_hold_cct_kelvin:
+          name: "CCT – Kelwiny (aktywne tylko przy preście: Własny)"
+          default: 2700
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              step: 100
+              unit_of_measurement: K
+              mode: slider
+        bottom_hold_rgb:
+          name: "RGB – kolor (tylko tryb RGB Color)"
+          default: [255, 255, 255]
+          selector:
+            color_rgb: {}
+        bottom_hold_custom:
+          name: "Custom – akcja (tylko tryb Custom)"
+          default: []
+          selector:
+            action: {}
 
 mode: restart
 max_exceeded: silent
@@ -42,7 +300,6 @@ trigger:
     topic: !input mqtt_action_topic
 
 variables:
-  # Obsługa dwóch wariantów: czysty string na /action lub JSON z polem "action" na topicu bazowym
   action: >-
     {% set pj = trigger.payload_json if trigger.payload_json is defined else {} %}
     {% if pj is mapping and 'action' in pj %}
@@ -56,14 +313,378 @@ condition: []
 action:
   - choose:
       - conditions: "{{ action == 'single_up' }}"
-        sequence: !input on_top_single
+        sequence:
+          - variables:
+              _mode: !input top_single_mode
+              _lights: !input top_single_lights
+              _cct_preset: !input top_single_cct_preset
+              _cct_k_in: !input top_single_cct_kelvin
+          - choose:
+              - conditions: "{{ _mode == 'toggle' }}"
+                sequence:
+                  - action: light.toggle
+                    target:
+                      entity_id: !input top_single_lights
+              - conditions: "{{ _mode == 'cct' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _cct_k: >-
+                        {% if _cct_preset == 'warm' %}
+                          {% set max_m = expand(_lights)
+                             | map(attribute='attributes.max_mireds')
+                             | select('number') | list %}
+                          {{ (1000000 / (max_m | max if max_m | length > 0 else 500)) | int }}
+                        {% elif _cct_preset == 'neutral' %}
+                          4000
+                        {% elif _cct_preset == 'cool' %}
+                          5800
+                        {% else %}
+                          {{ _cct_k_in | int(2700) }}
+                        {% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input top_single_lights
+                    data:
+                      color_temp_kelvin: "{{ _cct_k | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'rgb' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input top_single_lights
+                    data:
+                      rgb_color: !input top_single_rgb
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'brightness_cycle' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _next_pct: >-
+                        {% set on_lights = expand(_lights) | selectattr('state','eq','on') | list %}
+                        {% set bri = on_lights[0].attributes.brightness | int
+                           if (on_lights and on_lights[0].attributes.brightness is not none)
+                           else 0 %}
+                        {% set p = bri * 100 // 255 %}
+                        {% if p < 30 %}60{% elif p < 80 %}100{% else %}20{% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input top_single_lights
+                    data:
+                      brightness_pct: "{{ _next_pct | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'custom' }}"
+                sequence: !input top_single_custom
+            default: []
 
       - conditions: "{{ action == 'single_down' }}"
-        sequence: !input on_bottom_single
+        sequence:
+          - variables:
+              _mode: !input bottom_single_mode
+              _lights: !input bottom_single_lights
+              _cct_preset: !input bottom_single_cct_preset
+              _cct_k_in: !input bottom_single_cct_kelvin
+          - choose:
+              - conditions: "{{ _mode == 'toggle' }}"
+                sequence:
+                  - action: light.toggle
+                    target:
+                      entity_id: !input bottom_single_lights
+              - conditions: "{{ _mode == 'cct' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _cct_k: >-
+                        {% if _cct_preset == 'warm' %}
+                          {% set max_m = expand(_lights)
+                             | map(attribute='attributes.max_mireds')
+                             | select('number') | list %}
+                          {{ (1000000 / (max_m | max if max_m | length > 0 else 500)) | int }}
+                        {% elif _cct_preset == 'neutral' %}
+                          4000
+                        {% elif _cct_preset == 'cool' %}
+                          5800
+                        {% else %}
+                          {{ _cct_k_in | int(2700) }}
+                        {% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_single_lights
+                    data:
+                      color_temp_kelvin: "{{ _cct_k | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'rgb' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_single_lights
+                    data:
+                      rgb_color: !input bottom_single_rgb
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'brightness_cycle' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _next_pct: >-
+                        {% set on_lights = expand(_lights) | selectattr('state','eq','on') | list %}
+                        {% set bri = on_lights[0].attributes.brightness | int
+                           if (on_lights and on_lights[0].attributes.brightness is not none)
+                           else 0 %}
+                        {% set p = bri * 100 // 255 %}
+                        {% if p < 30 %}60{% elif p < 80 %}100{% else %}20{% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_single_lights
+                    data:
+                      brightness_pct: "{{ _next_pct | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'custom' }}"
+                sequence: !input bottom_single_custom
+            default: []
 
       - conditions: "{{ action == 'double_down' }}"
-        sequence: !input on_bottom_double
+        sequence:
+          - variables:
+              _mode: !input bottom_double_mode
+              _lights: !input bottom_double_lights
+              _cct_preset: !input bottom_double_cct_preset
+              _cct_k_in: !input bottom_double_cct_kelvin
+          - choose:
+              - conditions: "{{ _mode == 'toggle' }}"
+                sequence:
+                  - action: light.toggle
+                    target:
+                      entity_id: !input bottom_double_lights
+              - conditions: "{{ _mode == 'cct' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _cct_k: >-
+                        {% if _cct_preset == 'warm' %}
+                          {% set max_m = expand(_lights)
+                             | map(attribute='attributes.max_mireds')
+                             | select('number') | list %}
+                          {{ (1000000 / (max_m | max if max_m | length > 0 else 500)) | int }}
+                        {% elif _cct_preset == 'neutral' %}
+                          4000
+                        {% elif _cct_preset == 'cool' %}
+                          5800
+                        {% else %}
+                          {{ _cct_k_in | int(2700) }}
+                        {% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_double_lights
+                    data:
+                      color_temp_kelvin: "{{ _cct_k | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'rgb' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_double_lights
+                    data:
+                      rgb_color: !input bottom_double_rgb
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'brightness_cycle' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _next_pct: >-
+                        {% set on_lights = expand(_lights) | selectattr('state','eq','on') | list %}
+                        {% set bri = on_lights[0].attributes.brightness | int
+                           if (on_lights and on_lights[0].attributes.brightness is not none)
+                           else 0 %}
+                        {% set p = bri * 100 // 255 %}
+                        {% if p < 30 %}60{% elif p < 80 %}100{% else %}20{% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_double_lights
+                    data:
+                      brightness_pct: "{{ _next_pct | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'custom' }}"
+                sequence: !input bottom_double_custom
+            default: []
 
       - conditions: "{{ action == 'hold_down' }}"
-        sequence: !input on_bottom_hold
+        sequence:
+          - variables:
+              _mode: !input bottom_hold_mode
+              _lights: !input bottom_hold_lights
+              _cct_preset: !input bottom_hold_cct_preset
+              _cct_k_in: !input bottom_hold_cct_kelvin
+          - choose:
+              - conditions: "{{ _mode == 'toggle' }}"
+                sequence:
+                  - action: light.toggle
+                    target:
+                      entity_id: !input bottom_hold_lights
+              - conditions: "{{ _mode == 'cct' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _cct_k: >-
+                        {% if _cct_preset == 'warm' %}
+                          {% set max_m = expand(_lights)
+                             | map(attribute='attributes.max_mireds')
+                             | select('number') | list %}
+                          {{ (1000000 / (max_m | max if max_m | length > 0 else 500)) | int }}
+                        {% elif _cct_preset == 'neutral' %}
+                          4000
+                        {% elif _cct_preset == 'cool' %}
+                          5800
+                        {% else %}
+                          {{ _cct_k_in | int(2700) }}
+                        {% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_hold_lights
+                    data:
+                      color_temp_kelvin: "{{ _cct_k | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'rgb' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_hold_lights
+                    data:
+                      rgb_color: !input bottom_hold_rgb
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'brightness_cycle' }}"
+                sequence:
+                  - variables:
+                      _was_off: >-
+                        {{ expand(_lights) | selectattr('state','eq','off')
+                           | map(attribute='entity_id') | list }}
+                      _next_pct: >-
+                        {% set on_lights = expand(_lights) | selectattr('state','eq','on') | list %}
+                        {% set bri = on_lights[0].attributes.brightness | int
+                           if (on_lights and on_lights[0].attributes.brightness is not none)
+                           else 0 %}
+                        {% set p = bri * 100 // 255 %}
+                        {% if p < 30 %}60{% elif p < 80 %}100{% else %}20{% endif %}
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input bottom_hold_lights
+                    data:
+                      brightness_pct: "{{ _next_pct | int }}"
+                  - delay: "00:00:01"
+                  - if:
+                      - condition: template
+                        value_template: "{{ _was_off | length > 0 }}"
+                    then:
+                      - action: light.turn_off
+                        target:
+                          entity_id: "{{ _was_off }}"
+              - conditions: "{{ _mode == 'custom' }}"
+                sequence: !input bottom_hold_custom
+            default: []
     default: []
