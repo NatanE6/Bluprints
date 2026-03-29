@@ -45,7 +45,8 @@ blueprint:
           default: []
           selector:
             entity:
-              domain: light
+              filter:
+                - domain: light
               multiple: true
         top_single_cct_preset:
           name: "CCT – preset barwy  [tylko tryb CCT]"
