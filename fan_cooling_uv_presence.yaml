@@ -1,0 +1,126 @@
+blueprint:
+  name: Chłodzenie wiatrakiem (UV + obecność + tryb spania)
+  description: >-
+    Steruje gniazdkiem wiatraka na podstawie indeksu UV, temperatury zewnętrznej,
+    obecności domownika i trybu spania. Wiatrak włącza się gdy jest za gorąco
+    i jesteś w domu (poza trybem spania). Automatycznie wyłącza się po przekroczeniu
+    konfigurowalnego okna czasowego po zachodzie słońca.
+
+    Progi temperatury wg UV: UV<2 → 23°C, UV<5 → 20°C, UV≥5 → 19°C.
+  domain: automation
+  source_url: https://github.com/NatanE6/Bluprints/blob/main/fan_cooling_uv_presence.yaml
+  input:
+    weather_entity:
+      name: Encja pogody
+      description: Źródło danych pogodowych (temperatura i UV).
+      selector:
+        entity:
+          filter:
+            domain: weather
+
+    presence_boolean:
+      name: Boolean – obecność
+      description: input_boolean sygnalizujący obecność domownika w domu.
+      selector:
+        entity:
+          filter:
+            domain: input_boolean
+
+    sleep_mode_boolean:
+      name: Boolean – tryb spania
+      description: input_boolean sygnalizujący aktywny tryb spania.
+      selector:
+        entity:
+          filter:
+            domain: input_boolean
+
+    fan_switch:
+      name: Przełącznik wiatraka
+      description: Switch kontrolujący zasilanie wiatraka.
+      selector:
+        entity:
+          filter:
+            domain: switch
+
+    sunset_offset_hours:
+      name: Okno po zachodzie słońca (godziny)
+      description: >-
+        Przez ile godzin po zachodzie słońca automatyzacja pozostaje aktywna.
+        Po tym czasie wiatrak zostanie wyłączony i automatyzacja nie będzie
+        reagować aż do następnego wschodu.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 6
+          step: 0.5
+          unit_of_measurement: h
+          mode: slider
+
+mode: single
+
+variables:
+  _weather: !input weather_entity
+  _presence: !input presence_boolean
+  _sleep: !input sleep_mode_boolean
+  _offset_h: !input sunset_offset_hours
+
+triggers:
+  - trigger: state
+    entity_id: !input presence_boolean
+
+  - trigger: state
+    entity_id: !input sleep_mode_boolean
+
+  - trigger: state
+    entity_id: !input weather_entity
+
+  - trigger: state
+    entity_id: !input weather_entity
+    attribute: temperature
+
+  - trigger: time_pattern
+    minutes: "/30"
+
+conditions:
+  # Aktywne tylko w ciągu dnia lub przez N godzin po zachodzie słońca.
+  # Logika: next_setting < next_rising → słońce nad horyzontem (dzień).
+  # Po zachodzie: next_setting wskazuje na jutrzejszy zachód, więc
+  # poprzedni zachód ≈ next_setting - 86400. Sprawdzamy czy minęło < N godzin.
+  - condition: template
+    value_template: >-
+      {% set ns = state_attr('sun.sun', 'next_setting') | as_timestamp(0) %}
+      {% set nr = state_attr('sun.sun', 'next_rising') | as_timestamp(0) %}
+      {% set offset_sec = _offset_h * 3600 %}
+      {{ ns < nr or (now().timestamp() - (ns - 86400)) < offset_sec }}
+
+actions:
+  - variables:
+      _uv: "{{ state_attr(_weather, 'uv_index') | float(0) }}"
+      _temp: "{{ state_attr(_weather, 'temperature') | float(0) }}"
+      _threshold: "{{ 23 if _uv < 2 else 20 if _uv < 5 else 19 }}"
+      _should_on: "{{ _temp >= _threshold }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ states(_sleep) != 'on' }}"
+          - condition: template
+            value_template: "{{ states(_presence) == 'on' }}"
+          - condition: template
+            value_template: "{{ _should_on }}"
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: !input fan_switch
+
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ states(_sleep) == 'on'
+                 or states(_presence) == 'off'
+                 or not _should_on }}
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: !input fan_switch
