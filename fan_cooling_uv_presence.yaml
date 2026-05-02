@@ -1,76 +1,182 @@
 blueprint:
-  name: Chłodzenie wiatrakiem (UV + obecność + tryb spania)
+  name: Fan Cooling – UV Index, Presence & Sleep
   description: >-
-    Steruje gniazdkiem wiatraka na podstawie indeksu UV, temperatury zewnętrznej,
-    obecności domownika i trybu spania. Wiatrak włącza się gdy jest za gorąco
-    i jesteś w domu (poza trybem spania). Automatycznie wyłącza się po przekroczeniu
-    konfigurowalnego okna czasowego po zachodzie słońca.
+    Controls a fan (or any switch) based on outdoor UV index, temperature,
+    occupancy, and a sleep mode flag.
 
-    Progi temperatury wg UV: UV<2 → 23°C, UV<5 → 20°C, UV≥5 → 19°C.
+    The fan turns on when temperature reaches the threshold for the current UV
+    level, someone is home, and sleep mode is off. It shuts off at night after a
+    configurable window past sunset.
+
+    **How thresholds work:** three temperature limits are defined, one per UV
+    intensity zone. Higher UV → lower threshold (the sun heats the room more
+    even at the same outdoor temperature).
+
+    **UV zones (WHO scale):** low 0–2 · moderate 3–5 · high 6+. Both zone
+    boundaries and all three temperature thresholds are adjustable.
+
+    **Requirement:** weather entity must expose a `uv_index` attribute. Verify
+    with Developer Tools → Template:
+    `{{ state_attr('weather.YOUR_ENTITY', 'uv_index') }}`
   domain: automation
   source_url: https://github.com/NatanE6/Bluprints/blob/main/fan_cooling_uv_presence.yaml
+  homeassistant:
+    min_version: "2024.6.0"
   input:
-    weather_entity:
-      name: Encja pogody
-      description: Źródło danych pogodowych (temperatura i UV).
-      selector:
-        entity:
-          filter:
-            domain: weather
+    entities_section:
+      name: Entities
+      icon: mdi:power-plug
+      input:
+        weather_entity:
+          name: Weather entity
+          description: >-
+            Source of outdoor temperature and UV index data. Must provide a
+            `uv_index` attribute (Met.no, Open-Meteo, Buienradar, etc.).
+          selector:
+            entity:
+              filter:
+                domain: weather
 
-    presence_boolean:
-      name: Boolean – obecność
-      description: input_boolean sygnalizujący obecność domownika w domu.
-      selector:
-        entity:
-          filter:
-            domain: input_boolean
+        occupancy_entity:
+          name: Occupancy / Presence
+          description: >-
+            Entity that is `on` when someone is home. Accepts input_boolean
+            or binary_sensor (person, motion, etc.).
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+                - domain: binary_sensor
 
-    sleep_mode_boolean:
-      name: Boolean – tryb spania
-      description: input_boolean sygnalizujący aktywny tryb spania.
-      selector:
-        entity:
-          filter:
-            domain: input_boolean
+        sleep_entity:
+          name: Sleep mode
+          description: >-
+            Entity that is `on` during sleep. The fan will be turned off while
+            sleeping, regardless of temperature.
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+                - domain: binary_sensor
 
-    fan_switch:
-      name: Przełącznik wiatraka
-      description: Switch kontrolujący zasilanie wiatraka.
-      selector:
-        entity:
-          filter:
-            domain: switch
+        fan_switch:
+          name: Fan switch
+          description: Switch that controls the fan's power.
+          selector:
+            entity:
+              filter:
+                domain: switch
 
-    sunset_offset_hours:
-      name: Okno po zachodzie słońca (godziny)
-      description: >-
-        Przez ile godzin po zachodzie słońca automatyzacja pozostaje aktywna.
-        Po tym czasie wiatrak zostanie wyłączony i automatyzacja nie będzie
-        reagować aż do następnego wschodu.
-      default: 2
-      selector:
-        number:
-          min: 0
-          max: 6
-          step: 0.5
-          unit_of_measurement: h
-          mode: slider
+    thresholds_section:
+      name: Temperature thresholds
+      icon: mdi:thermometer
+      collapsed: true
+      input:
+        temp_low_uv:
+          name: "Threshold – low UV (UV ≤ low boundary)"
+          description: >-
+            Fan turns on at or above this temperature when UV is low.
+            Default: 23 °C.
+          default: 23
+          selector:
+            number:
+              min: 15
+              max: 40
+              step: 1
+              unit_of_measurement: "°C"
+              mode: slider
+
+        temp_mid_uv:
+          name: "Threshold – moderate UV (low boundary < UV ≤ high boundary)"
+          description: >-
+            Fan turns on at or above this temperature when UV is moderate.
+            Default: 20 °C.
+          default: 20
+          selector:
+            number:
+              min: 15
+              max: 40
+              step: 1
+              unit_of_measurement: "°C"
+              mode: slider
+
+        temp_high_uv:
+          name: "Threshold – high UV (UV > high boundary)"
+          description: >-
+            Fan turns on at or above this temperature when UV is high.
+            Default: 19 °C.
+          default: 19
+          selector:
+            number:
+              min: 15
+              max: 40
+              step: 1
+              unit_of_measurement: "°C"
+              mode: slider
+
+        uv_boundary_low:
+          name: Low / moderate UV boundary
+          description: >-
+            UV index that separates "low" from "moderate". WHO default: 2.
+          default: 2
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 1
+              mode: slider
+
+        uv_boundary_high:
+          name: Moderate / high UV boundary
+          description: >-
+            UV index that separates "moderate" from "high". WHO default: 5.
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 12
+              step: 1
+              mode: slider
+
+    schedule_section:
+      name: Schedule
+      icon: mdi:weather-sunset
+      collapsed: true
+      input:
+        sunset_offset_hours:
+          name: Active window after sunset (hours)
+          description: >-
+            How long after sunset the automation stays active. Outside this
+            window the fan is turned off and no action is taken until the next
+            sunrise. Set to 0 to deactivate exactly at sunset.
+          default: 2
+          selector:
+            number:
+              min: 0
+              max: 6
+              step: 0.5
+              unit_of_measurement: h
+              mode: slider
 
 mode: single
 
 variables:
   _weather: !input weather_entity
-  _presence: !input presence_boolean
-  _sleep: !input sleep_mode_boolean
+  _occupancy: !input occupancy_entity
+  _sleep: !input sleep_entity
   _offset_h: !input sunset_offset_hours
+  _temp_low: !input temp_low_uv
+  _temp_mid: !input temp_mid_uv
+  _temp_high: !input temp_high_uv
+  _uv_low: !input uv_boundary_low
+  _uv_high: !input uv_boundary_high
 
 triggers:
   - trigger: state
-    entity_id: !input presence_boolean
+    entity_id: !input occupancy_entity
 
   - trigger: state
-    entity_id: !input sleep_mode_boolean
+    entity_id: !input sleep_entity
 
   - trigger: state
     entity_id: !input weather_entity
@@ -83,14 +189,14 @@ triggers:
     minutes: "/30"
 
 conditions:
-  # Aktywne tylko w ciągu dnia lub przez N godzin po zachodzie słońca.
-  # Logika: next_setting < next_rising → słońce nad horyzontem (dzień).
-  # Po zachodzie: next_setting wskazuje na jutrzejszy zachód, więc
-  # poprzedni zachód ≈ next_setting - 86400. Sprawdzamy czy minęło < N godzin.
+  # Active during the day or within N hours after sunset.
+  # next_setting < next_rising  →  sun is above the horizon (daytime).
+  # After sunset next_setting points to tomorrow's sunset, so the previous
+  # sunset ≈ next_setting − 86400. Check that less than N hours have passed.
   - condition: template
     value_template: >-
       {% set ns = state_attr('sun.sun', 'next_setting') | as_timestamp(0) %}
-      {% set nr = state_attr('sun.sun', 'next_rising') | as_timestamp(0) %}
+      {% set nr = state_attr('sun.sun', 'next_rising')  | as_timestamp(0) %}
       {% set offset_sec = _offset_h * 3600 %}
       {{ ns < nr or (now().timestamp() - (ns - 86400)) < offset_sec }}
 
@@ -98,7 +204,7 @@ actions:
   - variables:
       _uv: "{{ state_attr(_weather, 'uv_index') | float(0) }}"
       _temp: "{{ state_attr(_weather, 'temperature') | float(0) }}"
-      _threshold: "{{ 23 if _uv < 2 else 20 if _uv < 5 else 19 }}"
+      _threshold: "{{ _temp_low if _uv <= _uv_low else _temp_mid if _uv <= _uv_high else _temp_high }}"
       _should_on: "{{ _temp >= _threshold }}"
 
   - choose:
@@ -106,7 +212,7 @@ actions:
           - condition: template
             value_template: "{{ states(_sleep) != 'on' }}"
           - condition: template
-            value_template: "{{ states(_presence) == 'on' }}"
+            value_template: "{{ states(_occupancy) == 'on' }}"
           - condition: template
             value_template: "{{ _should_on }}"
         sequence:
@@ -118,7 +224,7 @@ actions:
           - condition: template
             value_template: >-
               {{ states(_sleep) == 'on'
-                 or states(_presence) == 'off'
+                 or states(_occupancy) == 'off'
                  or not _should_on }}
         sequence:
           - action: switch.turn_off
