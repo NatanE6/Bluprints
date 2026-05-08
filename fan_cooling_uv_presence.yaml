@@ -1,23 +1,24 @@
 blueprint:
   name: Fan Cooling – UV Index, Presence & Sleep
   description: >-
-    Controls a fan (or any switch) based on outdoor UV index, temperature,
+    Controls a fan (or any switch) based on UV index, indoor temperature,
     occupancy, and a sleep mode flag.
 
-    The fan turns on when temperature reaches the threshold for the current UV
-    level, someone is home, and sleep mode is off. It shuts off at night after a
-    configurable window past sunset.
+    The fan turns on when indoor temperature reaches the threshold for the
+    current UV level, someone is home, and sleep mode is off. It shuts off at
+    night after a configurable window past sunset.
 
     **How thresholds work:** three temperature limits are defined, one per UV
     intensity zone. Higher UV → lower threshold (the sun heats the room more
-    even at the same outdoor temperature).
+    even at the same indoor temperature).
 
     **UV zones (WHO scale):** low 0–2 · moderate 3–5 · high 6+. Both zone
     boundaries and all three temperature thresholds are adjustable.
 
-    **Requirement:** weather entity must expose a `uv_index` attribute. Verify
-    with Developer Tools → Template:
-    `{{ state_attr('weather.YOUR_ENTITY', 'uv_index') }}`
+    **Requirements:**
+    - Weather entity must expose a `uv_index` attribute (Met.no, Open-Meteo,
+      Buienradar, etc.). Verify: `{{ state_attr('weather.YOUR_ENTITY', 'uv_index') }}`
+    - Temperature sensor must expose a numeric state in °C.
   domain: automation
   source_url: https://github.com/NatanE6/Bluprints/blob/main/fan_cooling_uv_presence.yaml
   homeassistant:
@@ -30,12 +31,24 @@ blueprint:
         weather_entity:
           name: Weather entity
           description: >-
-            Source of outdoor temperature and UV index data. Must provide a
-            `uv_index` attribute (Met.no, Open-Meteo, Buienradar, etc.).
+            Source of UV index data. Must provide a `uv_index` attribute
+            (Met.no, Open-Meteo, Buienradar, etc.). Temperature is no longer
+            read from this entity — use the Temperature sensor input instead.
           selector:
             entity:
               filter:
                 domain: weather
+
+        temperature_entity:
+          name: Temperature sensor
+          description: >-
+            Indoor temperature sensor used to decide whether to run the fan.
+            Must expose a numeric state in °C (device_class: temperature).
+          selector:
+            entity:
+              filter:
+                domain: sensor
+                device_class: temperature
 
         occupancy_entity:
           name: Occupancy / Presence
@@ -162,6 +175,7 @@ mode: single
 
 variables:
   _weather: !input weather_entity
+  _temp_sensor: !input temperature_entity
   _occupancy: !input occupancy_entity
   _sleep: !input sleep_entity
   _offset_h: !input sunset_offset_hours
@@ -182,8 +196,7 @@ triggers:
     entity_id: !input weather_entity
 
   - trigger: state
-    entity_id: !input weather_entity
-    attribute: temperature
+    entity_id: !input temperature_entity
 
   - trigger: time_pattern
     minutes: "/30"
@@ -203,7 +216,7 @@ conditions:
 actions:
   - variables:
       _uv: "{{ state_attr(_weather, 'uv_index') | float(0) }}"
-      _temp: "{{ state_attr(_weather, 'temperature') | float(0) }}"
+      _temp: "{{ states(_temp_sensor) | float(0) }}"
       _threshold: "{{ _temp_low if _uv <= _uv_low else _temp_mid if _uv <= _uv_high else _temp_high }}"
       _should_on: "{{ _temp >= _threshold }}"
 
