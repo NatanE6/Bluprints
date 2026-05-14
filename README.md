@@ -26,11 +26,28 @@ Three temperature limits are defined — one per UV intensity zone. Higher UV me
 
 All three thresholds and both zone boundaries are configurable in the UI, so you can tune the behaviour for your climate without touching any YAML.
 
+#### Manual override
+
+When the fan is turned on manually (via UI or physical switch) while the automation would keep it off, the blueprint detects this automatically:
+
+- **First manual press** — fan stays on for a configurable timeout (default 10 min), then turns off.
+- **Second manual press** (within the reset window) — fan stays on indefinitely.
+- **Sleep mode** always cancels the manual override, regardless of how many times the fan was pressed.
+- After the reset window (default 1 h), the counter resets and the automation resumes normal UV/temp control.
+
+Two helper entities are required — create them once in **Settings → Devices & Services → Helpers**:
+
+| Helper | Type | Settings |
+|--------|------|----------|
+| `input_boolean.fan_manual_override` | Toggle | Name: "Fan Manual Override" |
+| `input_number.fan_manual_press_count` | Number | Name: "Fan Manual Press Count", min 0, max 10, step 1 |
+
 #### Inputs
 
 | Section | Input | Description |
 |---------|-------|-------------|
 | Entities | Weather entity | Outdoor weather source — must expose a `uv_index` attribute |
+| Entities | Temperature sensor | Indoor temperature sensor (°C, device_class: temperature) |
 | Entities | Occupancy / Presence | `input_boolean` or `binary_sensor` that is `on` when home |
 | Entities | Sleep mode | `input_boolean` or `binary_sensor` that is `on` during sleep |
 | Entities | Fan switch | Switch entity controlling the fan's power |
@@ -40,11 +57,16 @@ All three thresholds and both zone boundaries are configurable in the UI, so you
 | Thresholds | Low/moderate UV boundary | UV index separating low from moderate (default 2) |
 | Thresholds | Moderate/high UV boundary | UV index separating moderate from high (default 5) |
 | Schedule | Active window after sunset | Hours past sunset the automation stays active (default 2 h) |
+| Manual override | Manual override flag | `input_boolean.fan_manual_override` helper |
+| Manual override | Manual press counter | `input_number.fan_manual_press_count` helper |
+| Manual override | First press timeout | Minutes before fan turns off after first manual press (default 10) |
+| Manual override | Counter reset window | Hours before the press counter resets (default 1 h) |
 
 #### Requirements
 
 - Home Assistant **2024.6+** (blueprint `section` inputs)
 - A weather entity that provides `uv_index` as an attribute (e.g. Met.no, Open-Meteo, Buienradar). Verify with Developer Tools → Template: `{{ state_attr('weather.YOUR_ENTITY', 'uv_index') }}`
+- Two helper entities for manual override tracking (see Manual override section above)
 
 #### Import
 

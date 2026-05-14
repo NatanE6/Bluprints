@@ -8,6 +8,13 @@ blueprint:
     current UV level, someone is home, and sleep mode is off. It shuts off at
     night after a configurable window past sunset.
 
+    **Manual override:** if the fan is turned on manually (via UI or physical
+    switch) when the automation would keep it off, the override is detected
+    automatically. First manual press keeps the fan on for a configurable
+    timeout (default 10 min), then turns it off. A second manual press within
+    the reset window keeps the fan on indefinitely. Sleep mode always cancels
+    the manual override.
+
     **How thresholds work:** three temperature limits are defined, one per UV
     intensity zone. Higher UV → lower threshold (the sun heats the room more
     even at the same indoor temperature).
@@ -19,6 +26,8 @@ blueprint:
     - Weather entity must expose a `uv_index` attribute (Met.no, Open-Meteo,
       Buienradar, etc.). Verify: `{{ state_attr('weather.YOUR_ENTITY', 'uv_index') }}`
     - Temperature sensor must expose a numeric state in °C.
+    - Manual override requires two helper entities — see the Manual override
+      section for details.
   domain: automation
   source_url: https://github.com/NatanE6/Bluprints/blob/main/fan_cooling_uv_presence.yaml
   homeassistant:
@@ -65,7 +74,8 @@ blueprint:
           name: Sleep mode
           description: >-
             Entity that is `on` during sleep. The fan will be turned off while
-            sleeping, regardless of temperature.
+            sleeping, regardless of temperature. Sleep mode also cancels any
+            active manual override.
           selector:
             entity:
               filter:
@@ -171,7 +181,63 @@ blueprint:
               unit_of_measurement: h
               mode: slider
 
-mode: single
+    manual_override_section:
+      name: Manual override
+      icon: mdi:hand-back-right
+      collapsed: true
+      input:
+        manual_override_entity:
+          name: Manual override flag
+          description: >-
+            An input_boolean set to ON while the fan is in manual mode.
+            Prevents the automation from turning the fan off.
+            Create a helper: input_boolean.fan_manual_override
+            (Settings → Devices & Services → Helpers → Add → Toggle).
+          selector:
+            entity:
+              domain: input_boolean
+
+        manual_press_count_entity:
+          name: Manual press counter
+          description: >-
+            An input_number (min 0, max 10, step 1) that tracks consecutive
+            manual presses within the reset window.
+            Create a helper: input_number.fan_manual_press_count
+            (Settings → Devices & Services → Helpers → Add → Number).
+          selector:
+            entity:
+              domain: input_number
+
+        manual_timeout_minutes:
+          name: First press timeout (minutes)
+          description: >-
+            After the first manual press, the fan turns off automatically
+            after this many minutes. Default: 10.
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 60
+              step: 1
+              unit_of_measurement: min
+              mode: slider
+
+        manual_reset_hours:
+          name: Counter reset window (hours)
+          description: >-
+            Time after which the manual press counter resets. A second press
+            must happen within this window to activate infinite mode.
+            Default: 1 h.
+          default: 1
+          selector:
+            number:
+              min: 0.5
+              max: 24
+              step: 0.5
+              unit_of_measurement: h
+              mode: slider
+
+mode: parallel
 
 variables:
   _weather: !input weather_entity
@@ -184,6 +250,11 @@ variables:
   _temp_high: !input temp_high_uv
   _uv_low: !input uv_boundary_low
   _uv_high: !input uv_boundary_high
+  _fan_switch: !input fan_switch
+  _override: !input manual_override_entity
+  _press_count_ent: !input manual_press_count_entity
+  _timeout: !input manual_timeout_minutes
+  _reset_h: !input manual_reset_hours
 
 triggers:
   - trigger: state
@@ -201,17 +272,21 @@ triggers:
   - trigger: time_pattern
     minutes: "/30"
 
+  - trigger: state
+    entity_id: !input fan_switch
+    to: "on"
+
 conditions:
-  # Active during the day or within N hours after sunset.
-  # next_setting < next_rising  →  sun is above the horizon (daytime).
-  # After sunset next_setting points to tomorrow's sunset, so the previous
-  # sunset ≈ next_setting − 86400. Check that less than N hours have passed.
+  # Allow fan_switch triggers through at any time (manual override works 24/7).
+  # All other triggers are restricted to daylight + N hours after sunset.
   - condition: template
     value_template: >-
       {% set ns = state_attr('sun.sun', 'next_setting') | as_timestamp(0) %}
       {% set nr = state_attr('sun.sun', 'next_rising')  | as_timestamp(0) %}
       {% set offset_sec = _offset_h * 3600 %}
-      {{ ns < nr or (now().timestamp() - (ns - 86400)) < offset_sec }}
+      {{ trigger.entity_id == _fan_switch
+         or ns < nr
+         or (now().timestamp() - (ns - 86400)) < offset_sec }}
 
 actions:
   - variables:
@@ -221,7 +296,71 @@ actions:
       _should_on: "{{ _temp >= _threshold }}"
 
   - choose:
+      # ── Branch A: Manual press detected ──────────────────────────────────
+      # Triggered when fan_switch turns ON while automation would keep it off.
       - conditions:
+          - condition: template
+            value_template: "{{ trigger.entity_id == _fan_switch }}"
+          - condition: template
+            value_template: >-
+              {{ not _should_on
+                 or states(_sleep) == 'on'
+                 or states(_occupancy) == 'off' }}
+        sequence:
+          - variables:
+              _new_count: "{{ states(_press_count_ent) | int(0) + 1 }}"
+          - action: input_number.set_value
+            data:
+              value: "{{ _new_count }}"
+            target:
+              entity_id: !input manual_press_count_entity
+          - action: input_boolean.turn_on
+            target:
+              entity_id: !input manual_override_entity
+          - if:
+              - condition: template
+                value_template: "{{ _new_count <= 1 }}"
+            then:
+              # First press: run for manual_timeout_minutes then turn off.
+              - delay:
+                  minutes: "{{ _timeout | int }}"
+              # Guard: abort if a second press happened during the delay.
+              - if:
+                  - condition: template
+                    value_template: "{{ states(_press_count_ent) | int(0) <= 1 }}"
+                then:
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input fan_switch
+                  - action: input_boolean.turn_off
+                    target:
+                      entity_id: !input manual_override_entity
+                  - delay:
+                      minutes: "{{ (_reset_h * 60) | int }}"
+                  - action: input_number.set_value
+                    data:
+                      value: 0
+                    target:
+                      entity_id: !input manual_press_count_entity
+            else:
+              # Second+ press: infinite mode — fan stays on.
+              # After the reset window, clear the counter and override
+              # so the UV/temp logic resumes control.
+              - delay:
+                  minutes: "{{ (_reset_h * 60) | int }}"
+              - action: input_number.set_value
+                data:
+                  value: 0
+                target:
+                  entity_id: !input manual_press_count_entity
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: !input manual_override_entity
+
+      # ── Branch B: Turn fan ON ─────────────────────────────────────────────
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.entity_id != _fan_switch }}"
           - condition: template
             value_template: "{{ states(_sleep) != 'on' }}"
           - condition: template
@@ -233,13 +372,33 @@ actions:
             target:
               entity_id: !input fan_switch
 
+      # ── Branch C: Turn fan OFF ────────────────────────────────────────────
+      # Manual override blocks turn-off, except sleep mode always wins.
       - conditions:
+          - condition: template
+            value_template: "{{ trigger.entity_id != _fan_switch }}"
           - condition: template
             value_template: >-
               {{ states(_sleep) == 'on'
                  or states(_occupancy) == 'off'
                  or not _should_on }}
+          - condition: template
+            value_template: >-
+              {{ states(_override) != 'on'
+                 or states(_sleep) == 'on' }}
         sequence:
           - action: switch.turn_off
             target:
               entity_id: !input fan_switch
+          - if:
+              - condition: template
+                value_template: "{{ states(_sleep) == 'on' }}"
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: !input manual_override_entity
+              - action: input_number.set_value
+                data:
+                  value: 0
+                target:
+                  entity_id: !input manual_press_count_entity
