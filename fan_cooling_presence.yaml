@@ -1,11 +1,11 @@
 blueprint:
-  name: Fan Cooling – UV Index, Presence & Sleep
+  name: Fan Cooling – Presence & Sleep
   description: >-
-    Controls a fan (or any switch) based on UV index, indoor temperature,
-    occupancy, and a sleep mode flag.
+    Controls a fan (or any switch) based on indoor temperature, occupancy,
+    and a sleep mode flag.
 
-    The fan turns on when indoor temperature reaches the threshold for the
-    current UV level, someone is home, and sleep mode is off. It shuts off at
+    The fan turns on when indoor temperature reaches the configured
+    threshold, someone is home, and sleep mode is off. It shuts off at
     night after a configurable window past sunset.
 
     **Manual override:** if the fan is turned on manually (via UI or physical
@@ -15,21 +15,12 @@ blueprint:
     the reset window keeps the fan on indefinitely. Sleep mode always cancels
     the manual override.
 
-    **How thresholds work:** three temperature limits are defined, one per UV
-    intensity zone. Higher UV → lower threshold (the sun heats the room more
-    even at the same indoor temperature).
-
-    **UV zones (WHO scale):** low 0–2 · moderate 3–5 · high 6+. Both zone
-    boundaries and all three temperature thresholds are adjustable.
-
     **Requirements:**
-    - Weather entity must expose a `uv_index` attribute (Met.no, Open-Meteo,
-      Buienradar, etc.). Verify: `{{ state_attr('weather.YOUR_ENTITY', 'uv_index') }}`
     - Temperature sensor must expose a numeric state in °C.
     - Manual override requires two helper entities — see the Manual override
       section for details.
   domain: automation
-  source_url: https://github.com/NatanE6/Bluprints/blob/main/fan_cooling_uv_presence.yaml
+  source_url: https://github.com/NatanE6/Bluprints/blob/main/fan_cooling_presence.yaml
   homeassistant:
     min_version: "2024.6.0"
   input:
@@ -37,17 +28,6 @@ blueprint:
       name: Entities
       icon: mdi:power-plug
       input:
-        weather_entity:
-          name: Weather entity
-          description: >-
-            Source of UV index data. Must provide a `uv_index` attribute
-            (Met.no, Open-Meteo, Buienradar, etc.). Temperature is no longer
-            read from this entity — use the Temperature sensor input instead.
-          selector:
-            entity:
-              filter:
-                domain: weather
-
         temperature_entity:
           name: Temperature sensor
           description: >-
@@ -91,15 +71,14 @@ blueprint:
                 domain: switch
 
     thresholds_section:
-      name: Temperature thresholds
+      name: Temperature threshold
       icon: mdi:thermometer
       collapsed: true
       input:
-        temp_low_uv:
-          name: "Threshold – low UV (UV ≤ low boundary)"
+        temp_threshold:
+          name: "Temperature threshold"
           description: >-
-            Fan turns on at or above this temperature when UV is low.
-            Default: 23 °C.
+            Fan turns on at or above this temperature. Default: 23 °C.
           default: 23
           selector:
             number:
@@ -107,58 +86,6 @@ blueprint:
               max: 40
               step: 1
               unit_of_measurement: "°C"
-              mode: slider
-
-        temp_mid_uv:
-          name: "Threshold – moderate UV (low boundary < UV ≤ high boundary)"
-          description: >-
-            Fan turns on at or above this temperature when UV is moderate.
-            Default: 20 °C.
-          default: 20
-          selector:
-            number:
-              min: 15
-              max: 40
-              step: 1
-              unit_of_measurement: "°C"
-              mode: slider
-
-        temp_high_uv:
-          name: "Threshold – high UV (UV > high boundary)"
-          description: >-
-            Fan turns on at or above this temperature when UV is high.
-            Default: 19 °C.
-          default: 19
-          selector:
-            number:
-              min: 15
-              max: 40
-              step: 1
-              unit_of_measurement: "°C"
-              mode: slider
-
-        uv_boundary_low:
-          name: Low / moderate UV boundary
-          description: >-
-            UV index that separates "low" from "moderate". WHO default: 2.
-          default: 2
-          selector:
-            number:
-              min: 0
-              max: 10
-              step: 1
-              mode: slider
-
-        uv_boundary_high:
-          name: Moderate / high UV boundary
-          description: >-
-            UV index that separates "moderate" from "high". WHO default: 5.
-          default: 5
-          selector:
-            number:
-              min: 0
-              max: 12
-              step: 1
               mode: slider
 
     schedule_section:
@@ -240,16 +167,11 @@ blueprint:
 mode: parallel
 
 variables:
-  _weather: !input weather_entity
   _temp_sensor: !input temperature_entity
   _occupancy: !input occupancy_entity
   _sleep: !input sleep_entity
   _offset_h: !input sunset_offset_hours
-  _temp_low: !input temp_low_uv
-  _temp_mid: !input temp_mid_uv
-  _temp_high: !input temp_high_uv
-  _uv_low: !input uv_boundary_low
-  _uv_high: !input uv_boundary_high
+  _temp_threshold: !input temp_threshold
   _fan_switch: !input fan_switch
   _override: !input manual_override_entity
   _press_count_ent: !input manual_press_count_entity
@@ -262,9 +184,6 @@ triggers:
 
   - trigger: state
     entity_id: !input sleep_entity
-
-  - trigger: state
-    entity_id: !input weather_entity
 
   - trigger: state
     entity_id: !input temperature_entity
@@ -290,10 +209,8 @@ conditions:
 
 actions:
   - variables:
-      _uv: "{{ state_attr(_weather, 'uv_index') | float(0) }}"
       _temp: "{{ states(_temp_sensor) | float(0) }}"
-      _threshold: "{{ _temp_low if _uv <= _uv_low else _temp_mid if _uv <= _uv_high else _temp_high }}"
-      _should_on: "{{ _temp >= _threshold }}"
+      _should_on: "{{ _temp >= _temp_threshold }}"
 
   - choose:
       # ── Branch A: Manual press detected ──────────────────────────────────
@@ -345,7 +262,7 @@ actions:
             else:
               # Second+ press: infinite mode — fan stays on.
               # After the reset window, clear the counter and override
-              # so the UV/temp logic resumes control.
+              # so the temperature logic resumes control.
               - delay:
                   minutes: "{{ (_reset_h * 60) | int }}"
               - action: input_number.set_value

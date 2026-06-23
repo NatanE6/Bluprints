@@ -8,23 +8,11 @@ Personal collection of Home Assistant automation blueprints. Built for my own se
 
 ## Blueprints
 
-### Fan Cooling – UV Index, Presence & Sleep
+### Fan Cooling – Presence & Sleep
 
-Controls a fan (or any switch) based on outdoor UV index, temperature, occupancy, and a sleep mode flag. Designed for climates where a fan provides enough comfort cooling during hot, sunny days.
+Controls a fan (or any switch) based on indoor temperature, occupancy, and a sleep mode flag.
 
-The fan turns on when it's hot enough for the current UV level, someone is home, and sleep mode is off. It automatically shuts off after a configurable window past sunset, and stays off overnight.
-
-#### How thresholds work
-
-Three temperature limits are defined — one per UV intensity zone. Higher UV means the room heats up faster, so the threshold drops.
-
-| UV level | Default UV range | Default temperature threshold |
-|----------|-----------------|-------------------------------|
-| Low      | UV ≤ 2          | 23 °C                         |
-| Moderate | UV 3–5          | 20 °C                         |
-| High     | UV > 5          | 19 °C                         |
-
-All three thresholds and both zone boundaries are configurable in the UI, so you can tune the behaviour for your climate without touching any YAML.
+The fan turns on when indoor temperature reaches the configured threshold, someone is home, and sleep mode is off. It automatically shuts off after a configurable window past sunset, and stays off overnight.
 
 #### Manual override
 
@@ -46,16 +34,11 @@ Two helper entities are required — create them once in **Settings → Devices 
 
 | Section | Input | Description |
 |---------|-------|-------------|
-| Entities | Weather entity | Outdoor weather source — must expose a `uv_index` attribute |
 | Entities | Temperature sensor | Indoor temperature sensor (°C, device_class: temperature) |
 | Entities | Occupancy / Presence | `input_boolean` or `binary_sensor` that is `on` when home |
 | Entities | Sleep mode | `input_boolean` or `binary_sensor` that is `on` during sleep |
 | Entities | Fan switch | Switch entity controlling the fan's power |
-| Thresholds | Threshold – low UV | Temperature to activate fan at low UV (default 23 °C) |
-| Thresholds | Threshold – moderate UV | Temperature to activate fan at moderate UV (default 20 °C) |
-| Thresholds | Threshold – high UV | Temperature to activate fan at high UV (default 19 °C) |
-| Thresholds | Low/moderate UV boundary | UV index separating low from moderate (default 2) |
-| Thresholds | Moderate/high UV boundary | UV index separating moderate from high (default 5) |
+| Thresholds | Temperature threshold | Temperature to activate the fan (default 23 °C) |
 | Schedule | Active window after sunset | Hours past sunset the automation stays active (default 2 h) |
 | Manual override | Manual override flag | `input_boolean.fan_manual_override` helper |
 | Manual override | Manual press counter | `input_number.fan_manual_press_count` helper |
@@ -65,17 +48,16 @@ Two helper entities are required — create them once in **Settings → Devices 
 #### Requirements
 
 - Home Assistant **2024.6+** (blueprint `section` inputs)
-- A weather entity that provides `uv_index` as an attribute (e.g. Met.no, Open-Meteo, Buienradar). Verify with Developer Tools → Template: `{{ state_attr('weather.YOUR_ENTITY', 'uv_index') }}`
 - Two helper entities for manual override tracking (see Manual override section above)
 
 #### Import
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FNatanE6%2FBluprints%2Fmain%2Ffan_cooling_uv_presence.yaml)
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FNatanE6%2FBluprints%2Fmain%2Ffan_cooling_presence.yaml)
 
 Or manually: **Settings → Automations → Blueprints → Import Blueprint** and paste:
 
 ```
-https://raw.githubusercontent.com/NatanE6/Bluprints/main/fan_cooling_uv_presence.yaml
+https://raw.githubusercontent.com/NatanE6/Bluprints/main/fan_cooling_presence.yaml
 ```
 
 ---
